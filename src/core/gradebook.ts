@@ -116,7 +116,8 @@ export function renderGradeBook(rubricName: string, rubric: Rubric | null, recor
 	for (const r of sorted) {
 		const s = r.summary;
 		const pct = s.totalMax > 0 ? `${Math.round(percent(effectiveTotal(s), s.totalMax))}%` : "";
-		out.push(`| [[${escapeCell(r.basename)}]] | ${formatNumber(s.totalProposed)} / ${formatNumber(s.totalMax)} | ${s.finalTotal === null ? "" : `${formatNumber(s.finalTotal)} / ${formatNumber(s.totalMax)}`} | ${pct} | ${s.complete ? "final" : "draft"} |`);
+		// Full path with an alias: the same student name recurs across rubrics, so a bare basename could resolve elsewhere.
+		out.push(`| [[${escapeCell(r.path.replace(/\.md$/, ""))}\\|${escapeCell(r.basename)}]] | ${formatNumber(s.totalProposed)} / ${formatNumber(s.totalMax)} | ${s.finalTotal === null ? "" : `${formatNumber(s.finalTotal)} / ${formatNumber(s.totalMax)}`} | ${pct} | ${s.complete ? "final" : "draft"} |`);
 	}
 	out.push("");
 	const totals = sorted.map((r) => effectiveTotal(r.summary));

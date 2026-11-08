@@ -198,11 +198,11 @@ export async function* ndjson(body: ReadableStream<Uint8Array>, signal?: AbortSi
 export function explainOllamaError(err: unknown, model: string, url: string): string {
 	const message = err instanceof Error ? err.message : String(err);
 	if (/not found|no such model|pull/i.test(message)) return `Model "${model}" is not installed. Run \`ollama pull ${model}\` or pick another model in settings.`;
-	if (/Cannot reach|ECONNREFUSED|Failed to fetch|NetworkError|ENOTFOUND/i.test(message)) return `Cannot reach Ollama at ${url}. Start Ollama or fix the URL in settings.`;
+	if (/Cannot reach|ECONNREFUSED|ECONNRESET|ERR_CONNECTION|ERR_NAME_NOT_RESOLVED|Failed to fetch|fetch failed|NetworkError|ENOTFOUND/i.test(message)) return `Cannot reach Ollama at ${url}. Start Ollama or fix the URL in settings.`;
 	return `Ollama error: ${message}`;
 }
 
 export function isConnectionError(err: unknown): boolean {
 	const message = err instanceof Error ? err.message : String(err);
-	return /Cannot reach|ECONNREFUSED|ECONNRESET|Failed to fetch|NetworkError|ENOTFOUND|fetch failed/i.test(message);
+	return /Cannot reach|ECONNREFUSED|ECONNRESET|ERR_CONNECTION|ERR_NAME_NOT_RESOLVED|Failed to fetch|fetch failed|NetworkError|ENOTFOUND/i.test(message);
 }

@@ -66,11 +66,12 @@ describe("renderGradeBook", () => {
 	const book = renderGradeBook("Essay rubric", rubric, records, "2026-11-07");
 
 	it("lists submissions alphabetically with proposed, final, percent and status", () => {
-		expect(book).toContain("| [[alice]] | 18 / 20 | 18 / 20 | 90% | final |");
-		expect(book).toContain("| [[bob]] | 11 / 20 |  | 55% | draft |");
-		expect(book).toContain("| [[carol]] | 15 / 20 | 14 / 20 | 70% | final |");
-		expect(book).toContain("| [[dave]] | 4 / 20 |  | 20% | draft |");
-		expect(book.indexOf("[[alice]]")).toBeLessThan(book.indexOf("[[bob]]"));
+		const link = (name: string) => `[[Teaching/Grading/Essay rubric/${name}\\|${name}]]`;
+		expect(book).toContain(`| ${link("alice")} | 18 / 20 | 18 / 20 | 90% | final |`);
+		expect(book).toContain(`| ${link("bob")} | 11 / 20 |  | 55% | draft |`);
+		expect(book).toContain(`| ${link("carol")} | 15 / 20 | 14 / 20 | 70% | final |`);
+		expect(book).toContain(`| ${link("dave")} | 4 / 20 |  | 20% | draft |`);
+		expect(book.indexOf(link("alice"))).toBeLessThan(book.indexOf(link("bob")));
 	});
 
 	it("writes the summary line, the criteria table, the distribution line and the most-missed list", () => {

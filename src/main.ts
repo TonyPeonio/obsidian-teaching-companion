@@ -2,7 +2,7 @@ import { Notice, Plugin, TFile, loadPdfJs, requestUrl } from "obsidian";
 import { GRADE_BOOK_NAME, isGradeBook, renderGradeBook, type GradeRecord } from "./core/gradebook";
 import { GradingParseError, gradeSubmission, type ChatFn, type GradingResult } from "./core/grading";
 import { gradingFolderFor, gradingNotePath, parseGradingNote, renderGradingNote, yourScoresOf } from "./core/notes";
-import { OllamaClient, explainOllamaError } from "./core/ollama";
+import { OllamaClient, OllamaError, explainOllamaError, isConnectionError } from "./core/ollama";
 import { extractPdfPages, type PdfJsLike } from "./core/pdf";
 import { parseRubric, precheckRubric, rubricTemplate, type Rubric } from "./core/rubric";
 import { parseSuggestions, rubricCheckMessages, writeSuggestions } from "./core/rubric-check";
@@ -42,7 +42,16 @@ export default class TeachingCompanionPlugin extends Plugin {
 	}
 
 	async loadSettings(): Promise<void> {
-		this.settings = { ...DEFAULT_SETTINGS, ...((await this.loadData()) as Partial<TeachingCompanionSettings> | null) };
+		const data = (await this.loadData()) as Partial<TeachingCompanionSettings> | null;
+		const s: TeachingCompanionSettings = { ...DEFAULT_SETTINGS, ...(data ?? {}) };
+		// data.json may have been edited by hand: keep the numbers and enums usable.
+		const n = Number(s.numCtx);
+		s.numCtx = Number.isFinite(n) ? Math.min(262144, Math.max(2048, Math.round(n))) : DEFAULT_SETTINGS.numCtx;
+		if (s.commentsTone !== "brief" && s.commentsTone !== "detailed") s.commentsTone = DEFAULT_SETTINGS.commentsTone;
+		for (const key of ["rubricsFolder", "gradingFolder", "ollamaUrl", "model"] as const) {
+			if (typeof s[key] !== "string" || !s[key].trim()) s[key] = DEFAULT_SETTINGS[key];
+		}
+		this.settings = s;
 	}
 
 	async saveSettings(): Promise<void> {
@@ -71,14 +80,18 @@ export default class TeachingCompanionPlugin extends Plugin {
 		const name = await modal.result;
 		if (!name) return;
 		const path = joinPath(this.settings.rubricsFolder, `${safeFileName(name)}.md`);
-		if (this.vault.exists(path)) {
-			new Notice(`"${path}" already exists.`);
+		try {
+			if (this.vault.exists(path)) {
+				new Notice(`"${path}" already exists.`);
+				await this.app.workspace.openLinkText(path, "", false);
+				return;
+			}
+			await this.vault.create(path, rubricTemplate(name));
 			await this.app.workspace.openLinkText(path, "", false);
-			return;
+			new Notice("Rubric template created. Replace the example criteria with yours.");
+		} catch (err) {
+			new Notice(`Could not create ${path}: ${this.describe(err)}`, 10000);
 		}
-		await this.vault.create(path, rubricTemplate(name));
-		await this.app.workspace.openLinkText(path, "", false);
-		new Notice("Rubric template created. Replace the example criteria with yours.");
 	}
 
 	// ---------------------------------------------------------------- grading
@@ -96,8 +109,22 @@ export default class TeachingCompanionPlugin extends Plugin {
 			});
 	}
 
+	/** Loads Obsidian's bundled pdf.js once per run; a loader or parser failure becomes a readable submission error. */
 	private pdfExtractor(): PdfExtractor {
-		return async (bytes) => extractPdfPages(bytes, (await loadPdfJs()) as PdfJsLike);
+		let pdfjs: Promise<PdfJsLike> | null = null;
+		return async (bytes) => {
+			pdfjs ??= (loadPdfJs() as Promise<PdfJsLike>).catch((err: unknown) => {
+				pdfjs = null;
+				throw new SubmissionError(`Obsidian's PDF reader could not be loaded (${err instanceof Error ? err.message : String(err)}). Convert the submission to a note or .txt file.`);
+			});
+			const lib = await pdfjs;
+			try {
+				return await extractPdfPages(bytes, lib);
+			} catch (err) {
+				if (err instanceof SubmissionError) throw err;
+				throw new SubmissionError(`The PDF could not be read (${err instanceof Error ? err.message : String(err)}). It may be damaged or password-protected.`);
+			}
+		};
 	}
 
 	private submissionFiles(): string[] {
@@ -144,11 +171,11 @@ export default class TeachingCompanionPlugin extends Plugin {
 		modal.open();
 		const req = await modal.result;
 		if (!req) return;
-		this.settings.lastRubric = req.rubricPath;
-		await this.saveSettings();
 		this.busy = true;
 		const notice = new Notice("Reading the submission…", 0);
 		try {
+			this.settings.lastRubric = req.rubricPath;
+			await this.saveSettings();
 			const { rubric } = await this.loadRubric(req.rubricPath);
 			const submission = await this.loadFromSource(req.source);
 			notice.setMessage(`Grading "${submission.name}" with ${this.settings.model}…`);
@@ -177,12 +204,12 @@ export default class TeachingCompanionPlugin extends Plugin {
 		modal.open();
 		const req = await modal.result;
 		if (!req) return;
-		this.settings.lastRubric = req.rubricPath;
-		this.settings.lastSubmissionsFolder = req.folder;
-		await this.saveSettings();
 
 		let rubric: Rubric;
 		try {
+			this.settings.lastRubric = req.rubricPath;
+			this.settings.lastSubmissionsFolder = req.folder;
+			await this.saveSettings();
 			rubric = (await this.loadRubric(req.rubricPath)).rubric;
 		} catch (err) {
 			return void new Notice(this.describe(err), 10000);
@@ -220,7 +247,13 @@ export default class TeachingCompanionPlugin extends Plugin {
 		}
 		const cancelled = progress.signal.aborted;
 		progress.finish(`${cancelled ? "Cancelled. " : ""}${done} graded${failed ? `, ${failed} failed` : ""}${skipped ? `, ${skipped} skipped` : ""}. Notes are in ${gradingFolderFor(this.settings.gradingFolder, rubric.name)}/.`);
-		if (done > 0) await this.writeGradeBook(rubric);
+		if (done > 0) {
+			try {
+				await this.writeGradeBook(rubric);
+			} catch (err) {
+				new Notice(`The grading notes were written, but the grade book was not: ${this.describe(err)}`, 10000);
+			}
+		}
 	}
 
 	// ---------------------------------------------------------------- grade book
@@ -247,9 +280,9 @@ export default class TeachingCompanionPlugin extends Plugin {
 		modal.open();
 		const path = await modal.result;
 		if (!path) return null;
-		this.settings.lastRubric = path;
-		await this.saveSettings();
 		try {
+			this.settings.lastRubric = path;
+			await this.saveSettings();
 			return (await this.loadRubric(path)).rubric;
 		} catch (err) {
 			new Notice(this.describe(err), 10000);
@@ -260,8 +293,12 @@ export default class TeachingCompanionPlugin extends Plugin {
 	async gradeBookCommand(): Promise<void> {
 		const rubric = await this.pickRubric("Grade book", `Rebuilds ${this.settings.gradingFolder}/<rubric>/${GRADE_BOOK_NAME}.md from the grading notes in that folder. Only that note is written.`, "Build grade book");
 		if (!rubric) return;
-		const path = await this.writeGradeBook(rubric);
-		await this.app.workspace.openLinkText(path, "", false);
+		try {
+			const path = await this.writeGradeBook(rubric);
+			await this.app.workspace.openLinkText(path, "", false);
+		} catch (err) {
+			new Notice(`Could not build the grade book: ${this.describe(err)}`, 10000);
+		}
 	}
 
 	private async writeGradeBook(rubric: Rubric): Promise<string> {
@@ -291,29 +328,32 @@ export default class TeachingCompanionPlugin extends Plugin {
 			path = rubrics.find((r) => r.name === picked.name)?.path ?? null;
 			if (!path) return;
 		}
-		const file = this.vault.listFiles().find((f) => f.path === path);
-		if (!file) return;
-		const content = await this.vault.read(path);
-		const rubric = parseRubric(content, file.basename);
-		const issues = precheckRubric(rubric);
-		let suggestions: string[] | null = null;
-		let modelUsed: string | null = null;
-		if (rubric.criteria.length > 0) {
-			const notice = new Notice(`Checking "${rubric.name}" with ${this.settings.model}…`, 0);
-			try {
-				const reply = await this.client.chat({ model: this.settings.model, messages: rubricCheckMessages(rubric), options: { num_ctx: Math.min(this.settings.numCtx, 8192), temperature: 0.2 }, think: false, format: "json", keep_alive: "10m" });
-				suggestions = parseSuggestions(reply);
-				modelUsed = this.settings.model;
-			} catch (err) {
-				new Notice(`${explainOllamaError(err, this.settings.model, this.settings.ollamaUrl)} The deterministic checks were still written.`, 10000);
-			} finally {
-				notice.hide();
+		const file = this.app.vault.getFileByPath(path);
+		if (!file) return void new Notice(`Rubric not found: ${path}`);
+		try {
+			const rubric = parseRubric(await this.app.vault.cachedRead(file), file.basename);
+			const issues = precheckRubric(rubric);
+			let suggestions: string[] | null = null;
+			let modelUsed: string | null = null;
+			if (rubric.criteria.length > 0) {
+				const notice = new Notice(`Checking "${rubric.name}" with ${this.settings.model}…`, 0);
+				try {
+					const reply = await this.client.chat({ model: this.settings.model, messages: rubricCheckMessages(rubric), options: { num_ctx: Math.min(this.settings.numCtx, 8192), temperature: 0.2 }, think: false, format: "json", keep_alive: "10m" });
+					suggestions = parseSuggestions(reply);
+					modelUsed = this.settings.model;
+				} catch (err) {
+					new Notice(`${explainOllamaError(err, this.settings.model, this.settings.ollamaUrl)} The deterministic checks were still written.`, 10000);
+				} finally {
+					notice.hide();
+				}
 			}
+			// The rubric is the user's note: edit it atomically so a concurrent edit is not lost.
+			await this.app.vault.process(file, (current) => writeSuggestions(current, issues, suggestions, modelUsed, today()));
+			await this.app.workspace.openLinkText(path, "", false);
+			new Notice(`${issues.length} check${issues.length === 1 ? "" : "s"} flagged${suggestions ? `, ${suggestions.length} model suggestion${suggestions.length === 1 ? "" : "s"}` : ""}. See ## Suggestions.`, 8000);
+		} catch (err) {
+			new Notice(`Rubric check failed: ${this.describe(err)}`, 10000);
 		}
-		const current = await this.vault.read(path);
-		await this.vault.modify(path, writeSuggestions(current, issues, suggestions, modelUsed, today()));
-		await this.app.workspace.openLinkText(path, "", false);
-		new Notice(`${issues.length} check${issues.length === 1 ? "" : "s"} flagged${suggestions ? `, ${suggestions.length} model suggestion${suggestions.length === 1 ? "" : "s"}` : ""}. See ## Suggestions.`, 8000);
 	}
 
 	// ---------------------------------------------------------------- helpers
@@ -321,7 +361,9 @@ export default class TeachingCompanionPlugin extends Plugin {
 	private describe(err: unknown): string {
 		if (err instanceof SubmissionError || err instanceof GradingParseError) return err.message;
 		if (err instanceof Error && err.name === "AbortError") return "Cancelled.";
-		return explainOllamaError(err, this.settings.model, this.settings.ollamaUrl);
+		if (err instanceof OllamaError || isConnectionError(err)) return explainOllamaError(err, this.settings.model, this.settings.ollamaUrl);
+		// Vault and parsing errors ("Rubric not found: …") are not Ollama's fault; say them as they are.
+		return err instanceof Error ? err.message : String(err);
 	}
 }
 
