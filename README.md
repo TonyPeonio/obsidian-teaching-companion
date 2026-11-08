@@ -7,13 +7,19 @@ score, a one-sentence justification and verbatim quotes from the submission as e
 note you finish by typing your own score. A grade book sums up the folder. No cloud model ever sees
 a student's name or words, which is the condition most institutions put on using AI in grading at all.
 
-Teaching Companion is one of a set of Obsidian plugins by the same author, all local and all at
-[github.com/TonyPeonio](https://github.com/TonyPeonio): [Local Vault Agent](https://github.com/TonyPeonio/obsidian-local-vault-agent),
-[Lecture Companion](https://github.com/TonyPeonio/obsidian-lecture-companion), [Canvas Companion](https://github.com/TonyPeonio/obsidian-canvas-companion),
-[Exam Companion](https://github.com/TonyPeonio/obsidian-exam-companion), [Paper Companion](https://github.com/TonyPeonio/obsidian-paper-companion),
-[Research Log Companion](https://github.com/TonyPeonio/obsidian-research-log-companion), [Meeting Companion](https://github.com/TonyPeonio/obsidian-meeting-companion),
-[Job Hunt Companion](https://github.com/TonyPeonio/obsidian-job-hunt-companion) and [Code Companion](https://github.com/TonyPeonio/obsidian-code-companion).
-Each does its work on your own machine, shows every change it makes and publishes its numbers.
+Teaching Companion is part of the Companion suite of local-first Obsidian plugins by Tony Peonio for
+students and researchers: your machine does the work, every change is a diff you approve, and the
+numbers are published. The others are Local Vault Agent (local Ollama agent that searches, compiles,
+edits notes), Lecture Companion (live local lecture transcription, Canvas slides, Ollama summaries),
+Canvas Companion (Canvas LMS assignments, grades and announcements as notes), Exam Companion
+(day-by-day study plan, daily quizzes and flashcards), Paper Companion (Zotero search by meaning,
+page-cited reading notes), Research Log Companion (append-only lab notebook with git, parameters,
+data hashes), Meeting Companion (local meeting transcription, decisions, action items, weekly
+digest), Job Hunt Companion (job applications as notes, resume tailoring, interview questions),
+Fellowship Companion (grants and fellowships: deadlines, materials, letters, eligibility), Code
+Companion (commits in the daily note, weekly report, TODOs) and Branching Table of Contents
+(parent/child properties as a rooted family tree). All at
+[github.com/TonyPeonio](https://github.com/TonyPeonio).
 
 - **Your rubric, as a note.** A markdown table with criteria, points and descriptions; optional
   score levels. Nothing to configure in a form.
