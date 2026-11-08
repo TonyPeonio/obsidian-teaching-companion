@@ -1,0 +1,10 @@
+{
+	"id": "teaching-companion",
+	"name": "Teaching Companion",
+	"version": "0.1.0",
+	"minAppVersion": "1.7.2",
+	"description": "Grade submissions against your own rubric notes with a local model: proposed scores, verbatim evidence, draft comments and a grade book, all on your machine.",
+	"author": "Tony Peonio",
+	"authorUrl": "https://github.com/TonyPeonio",
+	"isDesktopOnly": true
+}

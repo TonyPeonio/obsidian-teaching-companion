@@ -1,0 +1,36 @@
+/* Teaching Companion */
+
+.tc-modal .tc-modal-help {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	margin: 0 0 var(--size-4-3);
+}
+
+.tc-modal .tc-modal-error {
+	color: var(--text-error);
+	font-size: var(--font-ui-small);
+	margin: var(--size-4-2) 0 0;
+}
+
+.tc-modal .tc-modal-wide {
+	width: 100%;
+}
+
+.tc-modal .tc-paste {
+	width: 100%;
+	min-height: 12em;
+	font-family: var(--font-text);
+	font-size: var(--font-ui-small);
+}
+
+.tc-progress .tc-progress-text {
+	margin: 0 0 var(--size-4-3);
+}
+
+.tc-progress .tc-progress-log {
+	max-height: 14em;
+	overflow-y: auto;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	white-space: pre-wrap;
+}
