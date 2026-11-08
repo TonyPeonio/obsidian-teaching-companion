@@ -15,9 +15,13 @@
  * The parser is tolerant: header names are matched loosely, points may read "5 pts" or
  * "0–5", a "Total" row or a `total:` property states the expected total, and anything
  * under `## Suggestions` (written by the rubric check) is ignored.
+ *
+ * A note with no table is read as an outline (see rubric-outline.ts): top-level bullets or
+ * headings carrying "(20 points)" are criteria, what is nested under them is the description.
  */
 
 import { parseFrontmatter, renderFrontmatter } from "./frontmatter";
+import { parseOutlineRubric } from "./rubric-outline";
 
 export interface RubricLevel {
 	points: number;
@@ -107,6 +111,8 @@ export function parseRubric(content: string, name: string): Rubric {
 		}
 	}
 
+	if (criteria.length === 0) criteria.push(...parseOutlineRubric(text));
+
 	for (const c of criteria) {
 		c.levels.sort((a, b) => b.points - a.points);
 		if (c.maxPoints <= 0 && c.levels.length) c.maxPoints = Math.max(...c.levels.map((l) => l.points));
@@ -119,7 +125,7 @@ export function parseRubric(content: string, name: string): Rubric {
 /** Deterministic problems a grader should fix before trusting any model output. */
 export function precheckRubric(rubric: Rubric): RubricIssue[] {
 	const issues: RubricIssue[] = [];
-	if (rubric.criteria.length === 0) issues.push({ message: "No criteria found. The note needs a table with Criterion, Points and Description columns." });
+	if (rubric.criteria.length === 0) issues.push({ message: "No criteria found. The note needs a table with Criterion, Points and Description columns, or an outline whose top-level bullets carry points, like `* Introduction (20 points)`." });
 	const seen = new Set<string>();
 	for (const c of rubric.criteria) {
 		const key = normalizeName(c.name);

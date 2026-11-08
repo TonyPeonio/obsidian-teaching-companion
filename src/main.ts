@@ -70,7 +70,7 @@ export default class TeachingCompanionPlugin extends Plugin {
 		const file = this.vault.listFiles().find((f) => f.path === path);
 		if (!file) throw new Error(`Rubric not found: ${path}`);
 		const rubric = parseRubric(await this.vault.read(path), file.basename);
-		if (rubric.criteria.length === 0) throw new Error(`"${file.basename}" has no criteria table. See New rubric for the format.`);
+		if (rubric.criteria.length === 0) throw new Error(`"${file.basename}" has no criteria: no table and no outline bullets with points. See New rubric or the README for the formats.`);
 		return { rubric, file };
 	}
 

@@ -92,6 +92,28 @@ The other accepted layout is one small table per criterion under a heading that 
 Header names are matched loosely (*Criteria*, *Pts*, *What to look for* all work), and points may
 read `5 pts` or `0–5`.
 
+**No table? Paste the outline.** A note without a table is read as an outline, which is how most
+rubrics arrive from a syllabus or an LMS: a top-level bullet or a heading that carries points is a
+criterion, whatever is nested under it is the description, a nested item that starts with a number
+is a score level, and a sentence such as "There will be 10 points for overall quality" becomes a
+criterion of its own.
+
+```markdown
+* Introduction (20 points)
+   * The problem you solve, and why you chose it
+   * Background a reader needs to understand the problem
+* Technical details (40 points)
+   * The dataset, with an example of the inputs and outputs
+   * 40 — Excellent: every modelling choice is justified
+   * 25 — Adequate: the pipeline is described but choices are not justified
+
+There will be 10 points for overall quality (writing, grammar, spelling).
+```
+
+Points may be written `(20 points)`, `(20 pts)`, `[20]`, `Introduction - 20 points` or
+`## Introduction: 20 pts`. Run **Rubric check** afterwards: it lists what was read and flags a
+criterion that ended up without points or a description.
+
 ### Commands
 
 | Command | What it does |
