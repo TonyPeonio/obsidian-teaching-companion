@@ -14,8 +14,7 @@ edits notes), Lecture Companion (live local lecture transcription, Canvas slides
 Canvas Companion (Canvas LMS assignments, grades and announcements as notes), Exam Companion
 (day-by-day study plan, daily quizzes and flashcards), Paper Companion (Zotero search by meaning,
 page-cited reading notes), Research Log Companion (append-only lab notebook with git, parameters,
-data hashes), Meeting Companion (local meeting transcription, decisions, action items, weekly
-digest), Job Hunt Companion (job applications as notes, resume tailoring, interview questions),
+data hashes), Job Hunt Companion (job applications as notes, resume tailoring, interview questions),
 Fellowship Companion (grants and fellowships: deadlines, materials, letters, eligibility), Code
 Companion (commits in the daily note, weekly report, TODOs) and Branching Table of Contents
 (parent/child properties as a rooted family tree). All at
